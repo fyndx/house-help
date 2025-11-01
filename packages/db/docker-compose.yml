@@ -1,0 +1,23 @@
+name: house-help
+
+services:
+  postgres:
+    image: postgres
+    container_name: house-help-postgres
+    environment:
+      POSTGRES_DB: house-help
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - house-help_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  house-help_postgres_data:
