@@ -34,6 +34,8 @@ model Professional {
   isAvailable    Boolean        @default(true)
   // Professional approval status by admin
   approvalStatus ApprovalStatus @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
 
   // Relations
   favouritedBy         FavoriteProfessional[]

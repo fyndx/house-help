@@ -13,6 +13,7 @@ model Notification {
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, type])
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notification")

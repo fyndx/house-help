@@ -16,8 +16,13 @@ model PricingConfig {
   effectiveTo   DateTime?
   version       Int       @default(1)
   isActive      Boolean   @default(true)
+  createdBy     String?
+  updatedBy     String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // Relations
+  // TODO: Add relations here
 
   @@map("pricing_config")
 }

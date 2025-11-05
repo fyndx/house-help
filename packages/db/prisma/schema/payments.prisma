@@ -3,7 +3,6 @@ model Payment {
   id                 String        @id @default(cuid()) @map("_id")
   bookingId          String        @unique
   customerId         String
-  amount             Decimal       @db.Decimal(12, 2)
   currency           String        @default("INR")
   paymentMethod      PaymentMethod
   status             PaymentStatus @default(PENDING)
