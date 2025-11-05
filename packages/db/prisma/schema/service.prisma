@@ -1,0 +1,30 @@
+model Service {
+  id             String          @id @default(uuid(7)) @map("_id")
+  name           String          @unique
+  slug           String          @unique
+  description    String?
+  iconUrl        String?
+  baseHourlyRate Float
+  minimumHours   Int             @default(1)
+  category       ServiceCategory
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  professionalServices  ProfessionalService[]
+  bookingItems          BookingItem[]
+  recurringBookingRules RecurringBookingRule[]
+
+  @@index([slug])
+  @@index([category])
+  @@map("service")
+}
+
+enum ServiceCategory {
+  CLEANING
+  COOKING
+  PLUMBING
+  ELECTRICAL
+  OTHER
+}

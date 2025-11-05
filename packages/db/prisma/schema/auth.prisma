@@ -1,16 +1,28 @@
 model User {
-  id            String    @id @map("_id")
+  id            String         @id @map("_id")
   name          String
   email         String
   emailVerified Boolean
+  role          UserRole       @default(CUSTOMER)
+  isActive      Boolean        @default(true)
   image         String?
   createdAt     DateTime
   updatedAt     DateTime
+  // Relations
   sessions      Session[]
   accounts      Account[]
+  customer      Customer?
+  professional  Professional?
+  notifications Notification[]
 
   @@unique([email])
   @@map("user")
+}
+
+enum UserRole {
+  CUSTOMER
+  PROFESSIONAL
+  ADMIN
 }
 
 model Session {

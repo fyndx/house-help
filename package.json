@@ -19,6 +19,7 @@
     }
   },
   "scripts": {
+    "check": "biome check --write .",
     "dev": "turbo dev",
     "build": "turbo build",
     "check-types": "turbo check-types",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "turbo": "^2.5.4",
+    "@biomejs/biome": "^2.2.0",
     "tsdown": "^0.15.5",
     "@types/bun": "^1.2.6"
   },
