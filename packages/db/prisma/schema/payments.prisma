@@ -1,18 +1,18 @@
 // Represents a single payment intent or successful capture.
 model Payment {
-  id                 String        @id @default(uuid(7)) @map("_id")
+  id                 String        @id @default(cuid()) @map("_id")
   bookingId          String        @unique
   customerId         String
-  amount             Float
+  amount             Decimal       @db.Decimal(12, 2)
   currency           String        @default("INR")
   paymentMethod      PaymentMethod
   status             PaymentStatus @default(PENDING)
   transactionId      String?
   paymentGateway     String?
-  gatewayFee         Float? // what gateway charged
-  platformCommission Float? // your cut
-  netAmount          Float? // amount after fees
-  refundedAmount     Float         @default(0)
+  gatewayFee         Decimal?      @db.Decimal(10, 2) // what gateway charged
+  platformCommission Decimal?      @db.Decimal(10, 2) // your cut
+  netAmount          Decimal?      @db.Decimal(12, 2) // amount after fees
+  refundedAmount     Decimal       @default(0) @db.Decimal(12, 2)
   initiatedAt        DateTime      @default(now())
   capturedAt         DateTime?
   failedAt           DateTime?
@@ -61,10 +61,10 @@ enum RefundStatus {
 // Each significant action in a payment lifecycle (create intent, capture, refund, etc.)
 // Received from payment gateway webhooks/callbacks for each transaction event
 model PaymentTransaction {
-  id                   String                 @id @default(uuid(7)) @map("_id")
+  id                   String                 @id @default(cuid()) @map("_id")
   paymentId            String
   transactionType      PaymentTransactionType
-  amount               Float
+  amount               Decimal                @db.Decimal(12, 2)
   currency             String                 @default("INR")
   status               TransactionStatus      @default(INITIATED)
   transactionReference String?

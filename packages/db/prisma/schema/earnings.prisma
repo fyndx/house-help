@@ -1,6 +1,6 @@
 // Ledger Entry for Professionals' Earnings
 model Earning {
-  id                String            @id @default(uuid(7)) @map("_id")
+  id                String            @id @default(cuid()) @map("_id")
   professionalId    String
   bookingId         String
   paymentId         String? // reference to the payment record
@@ -8,10 +8,10 @@ model Earning {
   earningSourceType EarningSourceType @default(BOOKING)
   sourceRef         String? // e.g. "REFUND_123", "BONUS_Q1"
 
-  grossAmount        Float // total earned before deductions
-  platformCommission Float // platform's cut
-  taxes              Float? // TDS/GST/etc.
-  netAmount          Float // amount eligible for payout (gross - commission - taxes)
+  grossAmount        Decimal  @db.Decimal(12, 2) // total earned before deductions
+  platformCommission Decimal  @db.Decimal(12, 2) // platform's cut
+  taxes              Decimal? @db.Decimal(12, 2) // TDS/GST/etc.
+  netAmount          Decimal  @db.Decimal(12, 2) // amount eligible for payout (gross - commission - taxes)
 
   isReversed     Boolean   @default(false) // true if refunded or clawed back
   reversedAt     DateTime?
@@ -50,16 +50,16 @@ enum EarningStatus {
 
 // Represents a payout batch to a professional
 model Payout {
-  id              String       @id @default(uuid(7)) @map("_id")
+  id              String       @id @default(cuid()) @map("_id")
   referenceCode   String       @unique // e.g. "PO2025-0001"
   professionalId  String
   paymentGateway  String? // e.g. "razorpayx", "stripe_connect", "manual"
   type            PayoutType   @default(AUTO)
   status          PayoutStatus @default(PENDING)
-  totalEarnings   Float        @default(0)
-  totalCommission Float        @default(0)
-  taxesDeducted   Float?       @default(0)
-  payoutAmount    Float        @default(0) // actual amount transferred
+  totalEarnings   Decimal      @default(0) @db.Decimal(12, 2)
+  totalCommission Decimal      @default(0) @db.Decimal(12, 2)
+  taxesDeducted   Decimal?     @default(0) @db.Decimal(12, 2)
+  payoutAmount    Decimal      @default(0) @db.Decimal(12, 2) // actual amount transferred
   currency        String       @default("INR")
 
   initiatedAt        DateTime  @default(now())

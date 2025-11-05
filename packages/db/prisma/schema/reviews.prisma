@@ -1,5 +1,5 @@
 model Review {
-  id             String @id @default(uuid(7)) @map("_id")
+  id             String @id @default(cuid()) @map("_id")
   customerId     String
   professionalId String
   bookingId      String @unique
@@ -16,5 +16,6 @@ model Review {
 
   @@index([customerId])
   @@index([professionalId])
+  @@index([bookingId])
   @@map("review")
 }

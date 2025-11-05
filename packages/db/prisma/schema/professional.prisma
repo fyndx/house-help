@@ -1,5 +1,5 @@
 model Professional {
-  id     String @id @default(uuid(7)) @map("_id")
+  id     String @id @default(cuid()) @map("_id")
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -66,7 +66,7 @@ enum ApprovalStatus {
 }
 
 model ProfessionalDocument {
-  id             String       @id @default(uuid(7)) @map("_id")
+  id             String       @id @default(cuid()) @map("_id")
   professionalId String
   documentType   DocumentType
   documentUrl    String
@@ -92,10 +92,10 @@ enum DocumentType {
 }
 
 model ProfessionalService {
-  id             String   @id @default(uuid(7)) @map("_id")
+  id             String   @id @default(cuid()) @map("_id")
   professionalId String
   serviceId      String
-  hourlyRate     Float // Custom rate for the professional for this service
+  hourlyRate     Decimal  @db.Decimal(10, 2) // Custom rate for the professional for this service
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -110,7 +110,7 @@ model ProfessionalService {
 }
 
 model ProfessionalAvailability {
-  id             String       @id @default(uuid(7)) @map("_id")
+  id             String       @id @default(cuid()) @map("_id")
   professionalId String
   professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   dayOfWeek      DayOfWeek

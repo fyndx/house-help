@@ -1,10 +1,10 @@
 model Service {
-  id             String          @id @default(uuid(7)) @map("_id")
+  id             String          @id @default(cuid()) @map("_id")
   name           String          @unique
   slug           String          @unique
   description    String?
   iconUrl        String?
-  baseHourlyRate Float
+  baseHourlyRate Decimal         @db.Decimal(10, 2)
   minimumHours   Int             @default(1)
   category       ServiceCategory
   isActive       Boolean         @default(true)

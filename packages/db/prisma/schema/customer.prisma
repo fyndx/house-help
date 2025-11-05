@@ -1,5 +1,5 @@
 model Customer {
-  id     String @id @default(uuid(7)) @map("_id")
+  id     String @id @default(cuid()) @map("_id")
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -18,7 +18,7 @@ model Customer {
 }
 
 model CustomerAddress {
-  id         String                                 @id @default(uuid(7)) @map("_id")
+  id         String                                 @id @default(cuid()) @map("_id")
   customerId String
   label      String
   address    String
@@ -42,7 +42,7 @@ model CustomerAddress {
 }
 
 model FavoriteProfessional {
-  id             String   @id @default(uuid(7)) @map("_id")
+  id             String   @id @default(cuid()) @map("_id")
   customerId     String
   professionalId String
   createdAt      DateTime @default(now())
