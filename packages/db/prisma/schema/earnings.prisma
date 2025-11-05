@@ -2,7 +2,7 @@
 model Earning {
   id                String            @id @default(cuid()) @map("_id")
   professionalId    String
-  bookingId         String
+  bookingId         String?
   paymentId         String? // reference to the payment record
   payoutId          String? // linked when included in a payout batch
   earningSourceType EarningSourceType @default(BOOKING)

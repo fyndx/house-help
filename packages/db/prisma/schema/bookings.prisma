@@ -39,9 +39,9 @@ model Booking {
   updatedAt DateTime @updatedAt
 
   // Relations
-  customer            Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  professional        Professional          @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  address             CustomerAddress       @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  customer            Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  professional        Professional          @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  address             CustomerAddress       @relation(fields: [addressId], references: [id], onDelete: Restrict)
   recurringRule       RecurringBookingRule? @relation(fields: [recurringBookingRuleId], references: [id], onDelete: SetNull)
   items               BookingItem[]
   payment             Payment?
@@ -154,7 +154,8 @@ model BookingNotification {
   errorMessage   String?
 
   // Relations
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
   @@index([professionalId, status])

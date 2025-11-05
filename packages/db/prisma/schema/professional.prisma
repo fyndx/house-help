@@ -43,8 +43,9 @@ model Professional {
   earnings             Earning[]
   professionalDocument ProfessionalDocument[]
   services             ProfessionalService[]
-  RecurringBookingRule RecurringBookingRule[]
-  Payout               Payout[]
+  recurringBookingRule RecurringBookingRule[]
+  payout               Payout[]
+  bookingNotifications BookingNotification[]
 
   @@index([userId])
   @@index([isAvailable, approvalStatus])
