@@ -1,0 +1,97 @@
+// Represents a single payment intent or successful capture.
+model Payment {
+  id                 String        @id @default(cuid()) @map("_id")
+  bookingId          String        @unique
+  customerId         String
+  currency           String        @default("INR")
+  paymentMethod      PaymentMethod
+  status             PaymentStatus @default(PENDING)
+  transactionId      String?
+  paymentGateway     String?
+  gatewayFee         Decimal?      @db.Decimal(10, 2) // what gateway charged
+  platformCommission Decimal?      @db.Decimal(10, 2) // your cut
+  netAmount          Decimal?      @db.Decimal(12, 2) // amount after fees
+  refundedAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  initiatedAt        DateTime      @default(now())
+  capturedAt         DateTime?
+  failedAt           DateTime?
+  refundStatus       RefundStatus? @default(NONE)
+  metadata           Json?
+  refundReason       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  booking      Booking              @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer     Customer             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  transactions PaymentTransaction[]
+  earnings     Earning[]
+
+  @@index([bookingId])
+  @@index([customerId])
+  @@map("payment")
+}
+
+enum PaymentMethod {
+  CARD
+  UPI
+  WALLET
+  NET_BANKING
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  NONE
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Each significant action in a payment lifecycle (create intent, capture, refund, etc.)
+// Received from payment gateway webhooks/callbacks for each transaction event
+model PaymentTransaction {
+  id                   String                 @id @default(cuid()) @map("_id")
+  paymentId            String
+  transactionType      PaymentTransactionType
+  amount               Decimal                @db.Decimal(12, 2)
+  currency             String                 @default("INR")
+  status               TransactionStatus      @default(INITIATED)
+  transactionReference String?
+  rawResponse          Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_transaction")
+}
+
+enum TransactionStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+enum PaymentTransactionType {
+  INTENT_CREATED
+  AUTHORIZED
+  CAPTURED
+  REFUND_INITIATED
+  REFUND_COMPLETED
+  PAYOUT_INITIATED
+  PAYOUT_COMPLETED
+}

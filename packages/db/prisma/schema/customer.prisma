@@ -1,0 +1,56 @@
+model Customer {
+  id     String @id @default(cuid()) @map("_id")
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relations
+  // Addresses associated with the customer
+  addresses             CustomerAddress[]
+  // Bookings made by the customer
+  bookings              Booking[]
+  // Reviews written by the customer
+  reviews               Review[]
+  // Payments made by the customer
+  payments              Payment[]
+  // Favorites of the customer
+  favoriteProfessionals FavoriteProfessional[]
+  recurringBookingRules RecurringBookingRule[]
+}
+
+model CustomerAddress {
+  id         String                                 @id @default(cuid()) @map("_id")
+  customerId String
+  label      String
+  address    String
+  landmark   String?
+  latitude   Float
+  longitude  Float
+  // PostGIS geography point for spatial queries
+  location   Unsupported("geography(Point, 4326)")?
+  isDefault  Boolean                                @default(false)
+  createdAt  DateTime                               @default(now())
+  updatedAt  DateTime                               @updatedAt
+
+  // Bookings associated with this address
+  customer             Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  bookings             Booking[]
+  recurringBookingRule RecurringBookingRule[]
+
+  @@index([customerId])
+  @@index([location], type: Gist)
+  @@map("customer_address")
+}
+
+model FavoriteProfessional {
+  id             String   @id @default(cuid()) @map("_id")
+  customerId     String
+  professionalId String
+  createdAt      DateTime @default(now())
+
+  // Relations
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, professionalId])
+  @@map("favorite_professional")
+}

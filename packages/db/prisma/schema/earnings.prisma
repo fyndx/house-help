@@ -1,0 +1,98 @@
+// Ledger Entry for Professionals' Earnings
+model Earning {
+  id                String            @id @default(cuid()) @map("_id")
+  professionalId    String
+  bookingId         String?
+  paymentId         String? // reference to the payment record
+  payoutId          String? // linked when included in a payout batch
+  earningSourceType EarningSourceType @default(BOOKING)
+  sourceRef         String? // e.g. "REFUND_123", "BONUS_Q1"
+
+  grossAmount        Decimal  @db.Decimal(12, 2) // total earned before deductions
+  platformCommission Decimal  @db.Decimal(12, 2) // platform's cut
+  taxes              Decimal? @db.Decimal(12, 2) // TDS/GST/etc.
+  netAmount          Decimal  @db.Decimal(12, 2) // amount eligible for payout (gross - commission - taxes)
+
+  isReversed     Boolean   @default(false) // true if refunded or clawed back
+  reversedAt     DateTime?
+  reversalReason String?
+
+  earningStatus EarningStatus @default(PENDING) // when added to payout
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  payment      Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  payout       Payout?      @relation(fields: [payoutId], references: [id], onDelete: NoAction)
+  booking      Booking?     @relation(fields: [bookingId], references: [id], onDelete: NoAction)
+
+  @@index([professionalId])
+  @@index([payoutId])
+  @@map("earnings")
+}
+
+enum EarningSourceType {
+  BOOKING
+  TIP
+  BONUS
+  ADJUSTMENT
+  REFUND_REVERSAL
+}
+
+enum EarningStatus {
+  PENDING // created but not yet included in payout
+  IN_PAYOUT // currently in a payout batch
+  PAID // successfully paid
+  REVERSED // refunded/adjusted down
+}
+
+// Represents a payout batch to a professional
+model Payout {
+  id              String       @id @default(cuid()) @map("_id")
+  referenceCode   String       @unique // e.g. "PO2025-0001"
+  professionalId  String
+  paymentGateway  String? // e.g. "razorpayx", "stripe_connect", "manual"
+  type            PayoutType   @default(AUTO)
+  status          PayoutStatus @default(PENDING)
+  totalEarnings   Decimal      @default(0) @db.Decimal(12, 2)
+  totalCommission Decimal      @default(0) @db.Decimal(12, 2)
+  taxesDeducted   Decimal?     @default(0) @db.Decimal(12, 2)
+  payoutAmount    Decimal      @default(0) @db.Decimal(12, 2) // actual amount transferred
+  currency        String       @default("INR")
+
+  initiatedAt        DateTime  @default(now())
+  processedAt        DateTime?
+  settledAt          DateTime?
+  failedAt           DateTime?
+  failureReason      String?
+  externalPayoutRef  String? // RazorpayX transfer ID, Stripe transfer ID, etc.
+  bankAccountDetails Json? // snapshot at payout time
+  notes              String?
+  metadata           Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  earnings     Earning[]
+
+  @@index([professionalId])
+  @@map("payouts")
+}
+
+enum PayoutType {
+  AUTO // generated automatically via system (e.g., weekly)
+  MANUAL // triggered manually by admin
+  ADHOC // one-time or test payout
+}
+
+enum PayoutStatus {
+  PENDING // waiting for processing
+  PROCESSING // batch created, gateway request sent
+  PAID // successfully completed
+  FAILED // failed at gateway
+  REVERSED // reversed payout (clawed back)
+}

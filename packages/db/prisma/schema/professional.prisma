@@ -1,0 +1,129 @@
+model Professional {
+  id     String @id @default(cuid()) @map("_id")
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Professional Details
+  maskedAadhaar     String
+  isAadhaarVerified Boolean   @default(false)
+  aadhaarVerifiedAt DateTime?
+  dateOfBirth       DateTime?
+  gender            Gender?
+  profileImage      String?
+
+  // Service Details
+  bio             String?
+  experienceYears Int?
+  languages       String[] @default([]) // Languages spoken by the professional
+
+  // Service Area (PostGIS geography polygon for spatial queries)
+  // TODO: Use Zones or Service Areas in future
+  serviceRadiusKm Float                                  @default(5) // Service radius in kilometers
+  baseLatitude    Float?
+  baseLongitude   Float?
+  baseLocation    Unsupported("geography(Point, 4326)")?
+
+  // Ratings and Stats
+  averageRating     Float @default(0)
+  totalReviews      Int   @default(0)
+  totalBookings     Int   @default(0)
+  completedBookings Int   @default(0)
+
+  // Status
+  isActive       Boolean        @default(true)
+  isAvailable    Boolean        @default(true)
+  // Professional approval status by admin
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+
+  // Relations
+  favouritedBy         FavoriteProfessional[]
+  availability         ProfessionalAvailability[]
+  bookings             Booking[]
+  reviews              Review[]
+  earnings             Earning[]
+  professionalDocument ProfessionalDocument[]
+  services             ProfessionalService[]
+  recurringBookingRule RecurringBookingRule[]
+  payout               Payout[]
+  bookingNotifications BookingNotification[]
+
+  @@index([userId])
+  @@index([isAvailable, approvalStatus])
+  @@index([baseLocation], type: Gist)
+  @@map("professional")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model ProfessionalDocument {
+  id             String       @id @default(cuid()) @map("_id")
+  professionalId String
+  documentType   DocumentType
+  documentUrl    String
+  isVerified     Boolean      @default(false)
+  verifiedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, documentType])
+  @@index([professionalId])
+  @@map("professional_document")
+}
+
+enum DocumentType {
+  AADHAAR
+  PAN
+  POLICE_VERIFICATION
+  REFERENCE_LETTER
+  CERTIFICATE
+}
+
+model ProfessionalService {
+  id             String   @id @default(cuid()) @map("_id")
+  professionalId String
+  serviceId      String
+  hourlyRate     Decimal  @db.Decimal(10, 2) // Custom rate for the professional for this service
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  service      Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, serviceId])
+  @@index([professionalId])
+  @@index([serviceId])
+  @@map("professional_service")
+}
+
+model ProfessionalAvailability {
+  id             String       @id @default(cuid()) @map("_id")
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  dayOfWeek      DayOfWeek
+  startTime      String // e.g., "09:00"
+  endTime        String // e.g., "17:00"
+  isAvailable    Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([professionalId])
+  @@index([professionalId, dayOfWeek])
+  @@map("professional_availability")
+}

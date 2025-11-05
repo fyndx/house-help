@@ -1,0 +1,52 @@
+// | configKey                  | configValue (JSON)                   | description                            |
+// | -------------------------- | ------------------------------------ | -------------------------------------- |
+// | `"base_fee_per_booking"`   | `{ "amount": 50 }`                   | Flat fee added to every booking        |
+// | `"platform_commission"`    | `{ "percentage": 10 }`               | Platform commission as % of total      |
+// | `"surge_multiplier_rules"` | `{ "evening": 1.2, "weekend": 1.5 }` | Surge rates by time/day                |
+// | `"minimum_booking_amount"` | `{ "amount": 100 }`                  | Minimum booking value allowed          |
+// | `"distance_fee"`           | `{ "per_km": 10 }`                   | Extra charge per km beyond base radius |
+
+model PricingConfig {
+  id            String    @id @default(cuid())
+  configKey     String    @unique
+  configValue   Json
+  description   String?
+  category      String? // e.g. "commission", "surge", "discount"
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  version       Int       @default(1)
+  isActive      Boolean   @default(true)
+  createdBy     String?
+  updatedBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  // TODO: Add relations here
+
+  @@map("pricing_config")
+}
+
+model CancellationPolicy {
+  id                 String   @id @default(cuid())
+  hoursBeforeBooking Int // e.g., 2 hours before (validated: >= 0)
+  refundPercentage   Decimal  @db.Decimal(5, 2) // e.g., 100%, 50%, 0% (validated: 0-100)
+  description        String
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("cancellation_policies")
+}
+
+model SystemConfig {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       Json
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
