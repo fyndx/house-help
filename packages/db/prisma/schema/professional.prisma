@@ -4,7 +4,7 @@ model Professional {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Professional Details
-  maskedAadhaar     String
+  maskedAadhaar     String?
   isAadhaarVerified Boolean   @default(false)
   aadhaarVerifiedAt DateTime?
   dateOfBirth       DateTime?
