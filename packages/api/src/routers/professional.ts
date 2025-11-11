@@ -357,11 +357,22 @@ export const professionalRouter = {
 						message: "Professional not found",
 					});
 				}
+				const existingAvailability =
+					await prisma.professionalAvailability.findFirst({
+						where: {
+							id: input.id,
+							professionalId: professionalId,
+						},
+					});
+				if (!existingAvailability) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Availability not found",
+					});
+				}
 				const professionalAvailability =
 					await prisma.professionalAvailability.delete({
 						where: {
 							id: input.id,
-							professionalId: professionalId,
 						},
 					});
 				return professionalAvailability;

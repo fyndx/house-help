@@ -193,7 +193,7 @@ export const customerRouter = {
 				if (!customerId) {
 					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
 				}
-				const address = await prisma.customerAddress.findUnique({
+				const address = await prisma.customerAddress.findFirst({
 					where: {
 						id: input.id,
 						customerId: customerId,
@@ -269,10 +269,18 @@ export const customerRouter = {
 				if (!customerId) {
 					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
 				}
-				const address = await prisma.customerAddress.delete({
+				const existingAddress = await prisma.customerAddress.findFirst({
 					where: {
 						id: input.id,
 						customerId: customerId,
+					},
+				});
+				if (!existingAddress) {
+					throw new ORPCError("NOT_FOUND", { message: "Address not found" });
+				}
+				const address = await prisma.customerAddress.delete({
+					where: {
+						id: input.id,
 					},
 				});
 
@@ -342,13 +350,26 @@ export const customerRouter = {
 				if (!customerId) {
 					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
 				}
-				const favoriteProfessional = await prisma.favoriteProfessional.delete({
+				const existingFavoriteProfessional =
+					await prisma.favoriteProfessional.findFirst({
+						where: {
+							id: input.id,
+							customerId: customerId,
+						},
+					});
+				if (!existingFavoriteProfessional) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Favorite professional not found",
+					});
+				}
+				await prisma.favoriteProfessional.delete({
 					where: {
 						id: input.id,
-						customerId: customerId,
 					},
 				});
-				return favoriteProfessional;
+				return {
+					status: 204,
+				};
 			} catch (error) {
 				console.error(error);
 				throw new ORPCError("INTERNAL_SERVER_ERROR", {

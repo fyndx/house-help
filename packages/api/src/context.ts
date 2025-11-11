@@ -23,7 +23,7 @@ export async function createContext({ context }: CreateContextOptions) {
 	if (id) {
 		const data = await prisma.user.findUnique({
 			where: {
-				id: session?.user.id,
+				id,
 			},
 			select: {
 				customer: true,
