@@ -9,6 +9,10 @@
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./src/*.ts"
+    },
+    "./prisma/generated/*": {
+      "types": "./prisma/generated/*.d.ts",
+      "default": "./prisma/generated/*.ts"
     }
   },
   "scripts": {
