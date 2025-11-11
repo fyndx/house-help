@@ -1,9 +1,10 @@
-import z from "zod";
+import { z } from "zod";
 import { protectedProcedure, publicProcedure } from "../index";
 import prisma from "@house-help/db";
 import { auth } from "@house-help/auth";
 import { ORPCError } from "@orpc/client";
 import { UserRole } from "@house-help/db/prisma/generated/enums";
+import { Prisma } from "@house-help/db/prisma/generated/client";
 
 export const customerRouter = {
 	signUp: publicProcedure
@@ -73,9 +74,8 @@ export const customerRouter = {
 					},
 				});
 				if (!customer) {
-					throw new ORPCError("CUSTOMER_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
 				}
-				// TODO: add cookies from signInData to response headers
 
 				return {
 					session: signInData,
@@ -110,12 +110,14 @@ export const customerRouter = {
 				});
 
 				if (!customer) {
-					throw new ORPCError("CUSTOMER_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
 				}
 				return customer;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("EDIT_CUSTOMER_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to edit customer",
+				});
 			}
 		}),
 	// Addresses
@@ -133,7 +135,7 @@ export const customerRouter = {
 			try {
 				const customerId = context.customer?.id;
 				if (!customerId) {
-					throw new ORPCError("CUSTOMER_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
 				}
 				const customerAddress = await prisma.customerAddress.create({
 					data: {
@@ -143,26 +145,34 @@ export const customerRouter = {
 						longitude: input.longitude,
 						label: input.label,
 						customerId: customerId,
+						// location: Prisma.sql`ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326)::geography`,
 					},
 				});
 				// Raw prisma query to set location
-				const location = `POINT(${input.longitude} ${input.latitude})`;
-				// TODO: fix raw query to set location
-				// await prisma.$executeRaw`UPDATE customer_address SET location = ${location} WHERE id = ${context.customer?.id}`;
-				if (!customerAddress) {
-					throw new ORPCError("ADDRESS_CREATION_FAILED");
+				if (customerAddress) {
+					await prisma.$executeRaw`
+						UPDATE customer_address 
+						SET location = ${Prisma.sql`ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326)::geography`}
+						WHERE _id = ${customerAddress.id}
+					`;
 				}
 				return customerAddress;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("ADD_ADDRESS_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to add address",
+				});
 			}
 		}),
 	getAddresses: protectedProcedure.handler(async ({ context }) => {
 		try {
+			const customerId = context.customer?.id;
+			if (!customerId) {
+				throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
+			}
 			const addresses = await prisma.customerAddress.findMany({
 				where: {
-					customerId: context.customer?.id,
+					customerId: customerId,
 				},
 			});
 			return addresses;
@@ -179,9 +189,14 @@ export const customerRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
+				const customerId = context.customer?.id;
+				if (!customerId) {
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
+				}
 				const address = await prisma.customerAddress.findUnique({
 					where: {
 						id: input.id,
+						customerId: customerId,
 					},
 				});
 				return address;
@@ -203,11 +218,14 @@ export const customerRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
-				// Add checks for optional fields
-
+				const customerId = context.customer?.id;
+				if (!customerId) {
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
+				}
 				const address = await prisma.customerAddress.update({
 					where: {
 						id: input.id,
+						customerId: customerId,
 					},
 					data: {
 						...(input.address !== undefined && { address: input.address }),
@@ -219,16 +237,24 @@ export const customerRouter = {
 						...(input.label !== undefined && { label: input.label }),
 					},
 				});
+				if (!address) {
+					throw new ORPCError("NOT_FOUND", { message: "Address not found" });
+				}
+
 				// Raw prisma query to set location
-				const location = `POINT(${input.longitude} ${input.latitude})`;
 				if (input.latitude !== undefined && input.longitude !== undefined) {
-					// TODO: fix raw query to set location
-					// await prisma.$executeRaw`UPDATE customer_address SET location = ${location} WHERE id = ${input.id}`;
+					await prisma.$executeRaw`
+						UPDATE customer_address
+						SET location = ${Prisma.sql`ST_SetSRID(ST_MakePoint(${input.longitude}, ${input.latitude}), 4326)::geography`}
+						WHERE _id = ${input.id};
+					`;
 				}
 				return address;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("EDIT_ADDRESS_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to edit address",
+				});
 			}
 		}),
 	deleteAddress: protectedProcedure
@@ -239,16 +265,23 @@ export const customerRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
+				const customerId = context.customer?.id;
+				if (!customerId) {
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
+				}
 				const address = await prisma.customerAddress.delete({
 					where: {
 						id: input.id,
+						customerId: customerId,
 					},
 				});
 
 				return address;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("DELETE_ADDRESS_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to delete address",
+				});
 			}
 		}),
 	// Favorite Professionals
@@ -262,7 +295,7 @@ export const customerRouter = {
 			try {
 				const customerId = context.customer?.id;
 				if (!customerId) {
-					throw new ORPCError("CUSTOMER_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
 				}
 				const favoriteProfessional = await prisma.favoriteProfessional.create({
 					data: {
@@ -273,20 +306,28 @@ export const customerRouter = {
 				return favoriteProfessional;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("ADD_FAVORITE_PROFESSIONAL_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to add favorite professional",
+				});
 			}
 		}),
 	getFavoriteProfessionals: protectedProcedure.handler(async ({ context }) => {
 		try {
+			const customerId = context.customer?.id;
+			if (!customerId) {
+				throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
+			}
 			const favoriteProfessionals = await prisma.favoriteProfessional.findMany({
 				where: {
-					customerId: context.customer?.id,
+					customerId: customerId,
 				},
 			});
 			return favoriteProfessionals;
 		} catch (error) {
 			console.error(error);
-			throw new ORPCError("GET_FAVORITE_PROFESSIONALS_FAILED");
+			throw new ORPCError("INTERNAL_SERVER_ERROR", {
+				message: "Failed to get favorite professionals",
+			});
 		}
 	}),
 	removeProfessionalFromFavorites: protectedProcedure
@@ -297,15 +338,22 @@ export const customerRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
+				const customerId = context.customer?.id;
+				if (!customerId) {
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
+				}
 				const favoriteProfessional = await prisma.favoriteProfessional.delete({
 					where: {
 						id: input.id,
+						customerId: customerId,
 					},
 				});
 				return favoriteProfessional;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("DELETE_FAVORITE_PROFESSIONAL_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to remove professional from favorites",
+				});
 			}
 		}),
 };

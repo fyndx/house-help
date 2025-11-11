@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { protectedProcedure, publicProcedure } from "../index";
 import { auth } from "@house-help/auth";
 import { ORPCError } from "@orpc/client";
@@ -30,7 +30,9 @@ export const professionalRouter = {
 					},
 				});
 				if (!signUpData) {
-					throw new ORPCError("SIGN_UP_FAILED");
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Invalid sign up data",
+					});
 				}
 				const professional = await prisma.professional.create({
 					data: {
@@ -38,19 +40,23 @@ export const professionalRouter = {
 					},
 				});
 				if (!professional) {
-					throw new ORPCError("PROFESSIONAL_CREATION_FAILED");
+					throw new ORPCError("INTERNAL_SERVER_ERROR", {
+						message: "Failed to create professional",
+					});
 				}
 				return professional;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("CREATE_PROFESSIONAL_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to create professional",
+				});
 			}
 		}),
 	completeProfile: protectedProcedure
 		.input(
 			z.object({
 				maskedAadhaar: z.string(),
-				dateOfBirth: z.date(),
+				dateOfBirth: z.coerce.date(),
 				gender: z.enum(Gender),
 				profileImage: z.string(),
 				bio: z.string(),
@@ -66,7 +72,9 @@ export const professionalRouter = {
 			try {
 				const professionalId = context.professional?.id;
 				if (!professionalId) {
-					throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
 				}
 				// TODO: add baseLocation to professional
 				const professional = await prisma.professional.update({
@@ -89,7 +97,9 @@ export const professionalRouter = {
 				return professional;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("COMPLETE_PROFILE_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to complete profile",
+				});
 			}
 		}),
 	signIn: publicProcedure
@@ -110,7 +120,9 @@ export const professionalRouter = {
 				});
 				context.set.headers = Object.fromEntries(headers.entries());
 				if (!signInData) {
-					throw new ORPCError("SIGN_IN_FAILED");
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Invalid sign in data",
+					});
 				}
 				const professional = await prisma.professional.findUnique({
 					where: {
@@ -118,7 +130,9 @@ export const professionalRouter = {
 					},
 				});
 				if (!professional) {
-					throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
 				}
 				return {
 					session: signInData,
@@ -126,7 +140,9 @@ export const professionalRouter = {
 				};
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("SIGN_IN_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to sign in",
+				});
 			}
 		}),
 	edit: protectedProcedure
@@ -145,7 +161,9 @@ export const professionalRouter = {
 			try {
 				const professionalId = context.professional?.id;
 				if (!professionalId) {
-					throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
 				}
 				const professional = await prisma.professional.update({
 					where: {
@@ -176,7 +194,9 @@ export const professionalRouter = {
 				return professional;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("EDIT_PROFILE_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to edit profile",
+				});
 			}
 		}),
 	addDocument: protectedProcedure
@@ -190,7 +210,9 @@ export const professionalRouter = {
 			try {
 				const professionalId = context.professional?.id;
 				if (!professionalId) {
-					throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
 				}
 				const professionalDocument = await prisma.professionalDocument.create({
 					data: {
@@ -202,14 +224,18 @@ export const professionalRouter = {
 				return professionalDocument;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("ADD_DOCUMENT_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to add document",
+				});
 			}
 		}),
 	getProfile: protectedProcedure.handler(async ({ context }) => {
 		try {
 			const professionalId = context.professional?.id;
 			if (!professionalId) {
-				throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+				throw new ORPCError("NOT_FOUND", {
+					message: "Professional not found",
+				});
 			}
 			const professional = await prisma.professional.findUnique({
 				where: {
@@ -217,12 +243,16 @@ export const professionalRouter = {
 				},
 			});
 			if (!professional) {
-				throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+				throw new ORPCError("NOT_FOUND", {
+					message: "Professional not found",
+				});
 			}
 			return professional;
 		} catch (error) {
 			console.error(error);
-			throw new ORPCError("GET_PROFILE_FAILED");
+			throw new ORPCError("INTERNAL_SERVER_ERROR", {
+				message: "Failed to get profile",
+			});
 		}
 	}),
 	// Update Duty Status
@@ -236,7 +266,9 @@ export const professionalRouter = {
 			try {
 				const professionalId = context.professional?.id;
 				if (!professionalId) {
-					throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
 				}
 				const professional = await prisma.professional.update({
 					where: {
@@ -249,7 +281,9 @@ export const professionalRouter = {
 				return professional;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("UPDATE_DUTY_STATUS_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to update duty status",
+				});
 			}
 		}),
 	// Availability
@@ -265,7 +299,9 @@ export const professionalRouter = {
 			try {
 				const professionalId = context.professional?.id;
 				if (!professionalId) {
-					throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
 				}
 				const professionalAvailability =
 					await prisma.professionalAvailability.create({
@@ -279,14 +315,18 @@ export const professionalRouter = {
 				return professionalAvailability;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("ADD_AVAILABILITY_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to add availability",
+				});
 			}
 		}),
 	getAvailability: protectedProcedure.handler(async ({ context }) => {
 		try {
 			const professionalId = context.professional?.id;
 			if (!professionalId) {
-				throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+				throw new ORPCError("NOT_FOUND", {
+					message: "Professional not found",
+				});
 			}
 
 			const professionalAvailability =
@@ -298,7 +338,9 @@ export const professionalRouter = {
 			return professionalAvailability;
 		} catch (error) {
 			console.error(error);
-			throw new ORPCError("GET_AVAILABILITY_FAILED");
+			throw new ORPCError("INTERNAL_SERVER_ERROR", {
+				message: "Failed to get availability",
+			});
 		}
 	}),
 	deleteAvailability: protectedProcedure
@@ -309,16 +351,25 @@ export const professionalRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
+				const professionalId = context.professional?.id;
+				if (!professionalId) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
+				}
 				const professionalAvailability =
 					await prisma.professionalAvailability.delete({
 						where: {
 							id: input.id,
+							professionalId: professionalId,
 						},
 					});
 				return professionalAvailability;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("DELETE_AVAILABILITY_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to delete availability",
+				});
 			}
 		}),
 	updateAvailability: protectedProcedure
@@ -332,10 +383,17 @@ export const professionalRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
+				const professionalId = context.professional?.id;
+				if (!professionalId) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
+				}
 				const professionalAvailability =
 					await prisma.professionalAvailability.update({
 						where: {
 							id: input.id,
+							professionalId: professionalId,
 						},
 						data: {
 							dayOfWeek: input.dayOfWeek,
@@ -346,7 +404,9 @@ export const professionalRouter = {
 				return professionalAvailability;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("UPDATE_AVAILABILITY_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to update availability",
+				});
 			}
 		}),
 	// CRUD for Services
@@ -361,7 +421,9 @@ export const professionalRouter = {
 			try {
 				const professionalId = context.professional?.id;
 				if (!professionalId) {
-					throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
 				}
 				const professionalService = await prisma.professionalService.create({
 					data: {
@@ -373,14 +435,18 @@ export const professionalRouter = {
 				return professionalService;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("CREATE_SERVICE_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to create service",
+				});
 			}
 		}),
 	getServices: protectedProcedure.handler(async ({ context }) => {
 		try {
 			const professionalId = context.professional?.id;
 			if (!professionalId) {
-				throw new ORPCError("PROFESSIONAL_NOT_FOUND");
+				throw new ORPCError("NOT_FOUND", {
+					message: "Professional not found",
+				});
 			}
 			const professionalServices = await prisma.professionalService.findMany({
 				where: {
@@ -390,7 +456,9 @@ export const professionalRouter = {
 			return professionalServices;
 		} catch (error) {
 			console.error(error);
-			throw new ORPCError("GET_SERVICES_FAILED");
+			throw new ORPCError("INTERNAL_SERVER_ERROR", {
+				message: "Failed to get services",
+			});
 		}
 	}),
 	deleteService: protectedProcedure
@@ -401,15 +469,24 @@ export const professionalRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
+				const professionalId = context.professional?.id;
+				if (!professionalId) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
+				}
 				const professionalService = await prisma.professionalService.delete({
 					where: {
 						id: input.id,
+						professionalId: professionalId,
 					},
 				});
 				return professionalService;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("DELETE_SERVICE_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to delete service",
+				});
 			}
 		}),
 	updateService: protectedProcedure
@@ -421,9 +498,16 @@ export const professionalRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			try {
+				const professionalId = context.professional?.id;
+				if (!professionalId) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "Professional not found",
+					});
+				}
 				const professionalService = await prisma.professionalService.update({
 					where: {
 						id: input.id,
+						professionalId: professionalId,
 					},
 					data: {
 						hourlyRate: input.hourlyRate,
@@ -432,7 +516,9 @@ export const professionalRouter = {
 				return professionalService;
 			} catch (error) {
 				console.error(error);
-				throw new ORPCError("UPDATE_SERVICE_FAILED");
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to update service",
+				});
 			}
 		}),
 };
