@@ -191,6 +191,17 @@ export const professionalRouter = {
 						}),
 					},
 				});
+				// Update baseLocation if baseLatitude and baseLongitude are provided
+				if (
+					input.baseLatitude !== undefined &&
+					input.baseLongitude !== undefined
+				) {
+					await prisma.$executeRaw`
+						UPDATE professional 
+						SET "baseLocation" = ST_SetSRID(ST_MakePoint(${input.baseLongitude}, ${input.baseLatitude}), 4326)::geography
+						WHERE _id = ${professionalId}
+					`;
+				}
 				return professional;
 			} catch (error) {
 				console.error(error);
@@ -250,6 +261,9 @@ export const professionalRouter = {
 			return professional;
 		} catch (error) {
 			console.error(error);
+			if (error instanceof ORPCError) {
+				throw error;
+			}
 			throw new ORPCError("INTERNAL_SERVER_ERROR", {
 				message: "Failed to get profile",
 			});
@@ -286,13 +300,14 @@ export const professionalRouter = {
 				});
 			}
 		}),
+
 	// Availability
 	createAvailability: protectedProcedure
 		.input(
 			z.object({
-				dayOfWeek: z.enum(DayOfWeek),
-				startTime: z.string(),
-				endTime: z.string(),
+				dayIndex: z.number(),
+				startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
+				endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -303,10 +318,24 @@ export const professionalRouter = {
 						message: "Professional not found",
 					});
 				}
+				const existingAvailability =
+					await prisma.professionalAvailability.findFirst({
+						where: {
+							dayIndex: input.dayIndex,
+							startTime: input.startTime,
+							endTime: input.endTime,
+							professionalId: professionalId,
+						},
+					});
+				if (existingAvailability) {
+					throw new ORPCError("BAD_REQUEST", {
+						message: "Availability already exists",
+					});
+				}
 				const professionalAvailability =
 					await prisma.professionalAvailability.create({
 						data: {
-							dayOfWeek: input.dayOfWeek,
+							dayIndex: input.dayIndex,
 							startTime: input.startTime,
 							endTime: input.endTime,
 							professionalId: professionalId,
@@ -387,7 +416,7 @@ export const professionalRouter = {
 		.input(
 			z.object({
 				id: z.string(),
-				dayOfWeek: z.enum(DayOfWeek),
+				dayIndex: z.number(),
 				startTime: z.string(),
 				endTime: z.string(),
 			}),
@@ -407,7 +436,7 @@ export const professionalRouter = {
 							professionalId: professionalId,
 						},
 						data: {
-							dayOfWeek: input.dayOfWeek,
+							dayIndex: input.dayIndex,
 							startTime: input.startTime,
 							endTime: input.endTime,
 						},

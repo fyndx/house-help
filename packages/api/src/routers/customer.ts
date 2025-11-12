@@ -3,8 +3,16 @@ import { protectedProcedure, publicProcedure } from "../index";
 import prisma from "@house-help/db";
 import { auth } from "@house-help/auth";
 import { ORPCError } from "@orpc/client";
-import { UserRole } from "@house-help/db/prisma/generated/enums";
-import { Prisma } from "@house-help/db/prisma/generated/client";
+import {
+	ApprovalStatus,
+	UserRole,
+} from "@house-help/db/prisma/generated/enums";
+import {
+	Prisma,
+	type Professional,
+} from "@house-help/db/prisma/generated/client";
+import dayjs from "dayjs";
+import { categorizeTimeSlots } from "../utils/booking-util";
 
 export const customerRouter = {
 	signUp: publicProcedure
@@ -374,6 +382,151 @@ export const customerRouter = {
 				console.error(error);
 				throw new ORPCError("INTERNAL_SERVER_ERROR", {
 					message: "Failed to remove professional from favorites",
+				});
+			}
+		}),
+	// Bookings
+	getAvailableSlots: protectedProcedure
+		.input(
+			z.object({
+				serviceId: z.string(),
+				location: z.object({
+					latitude: z.number(),
+					longitude: z.number(),
+				}),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			// Find Professionals available for the service in the location
+			// Check if the professional is available on the date
+			// Response should be based on the date and should contain the slots
+			// No need to get professionals, just the slots
+			// If date is not provided, get the slots for the next 4 days
+			// If date is provided, get the slots for the date
+			// Group Response by date and slot
+			try {
+				const { serviceId, location } = input;
+				const DURATIONS = [
+					{ hours: 1, label: "1 hour" },
+					{ hours: 1.5, label: "1.5 hours" },
+					{ hours: 2, label: "2 hours" },
+					{ hours: 2.5, label: "2.5 hours" },
+					{ hours: 3, label: "3 hours" },
+					{ hours: 3.5, label: "3.5 hours" },
+					{ hours: 4, label: "4 hours" },
+				];
+				const { latitude, longitude } = location;
+				const customerId = context.customer?.id;
+				if (!customerId) {
+					throw new ORPCError("NOT_FOUND", { message: "Customer not found" });
+				}
+
+				// Find professionals available for the service in the location
+				const professionals: Professional[] = await prisma.$queryRaw`
+					SELECT p._id, p."isAvailable", p."approvalStatus", p."serviceRadiusKm"  
+					FROM professional p
+					JOIN professional_service ps ON ps."professionalId" = p._id
+					WHERE ps."serviceId" = ${serviceId}
+					AND p."approvalStatus" = 'APPROVED'
+					AND p."isAvailable" = true
+					AND ST_DWithin(
+						p."baseLocation", 
+						ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography, 
+						p."serviceRadiusKm" * 1000 
+					);
+				`;
+				if (professionals.length === 0) {
+					return {
+						data: [],
+					};
+				}
+				// Loop over next 4 days (today + next 3)
+				const results = [];
+				for (let dayOffset = 0; dayOffset < 4; dayOffset++) {
+					const date = dayjs().add(dayOffset, "day");
+					const dayIndex = date.day(); // 0–6
+
+					// 3️⃣ Get all professional availabilities for this weekday
+					const availability = await prisma.professionalAvailability.findMany({
+						where: {
+							professionalId: { in: professionals.map((p) => p._id) },
+							dayIndex,
+							isAvailable: true,
+						},
+					});
+					if (availability.length === 0) {
+						continue;
+					}
+					// Generate all possible 30-min slots between start–end ranges
+					const allSlots = [];
+					for (const a of availability) {
+						let cursor = dayjs(`${date.format("YYYY-MM-DD")}T${a.startTime}`);
+						const end = dayjs(`${date.format("YYYY-MM-DD")}T${a.endTime}`);
+						while (
+							cursor.add(30, "minute").isBefore(end) ||
+							cursor.isSame(end)
+						) {
+							allSlots.push(cursor.toDate());
+							cursor = cursor.add(30, "minute");
+						}
+					}
+
+					// Remove slots that overlap existing bookings
+					const bookedSlots = await prisma.booking.findMany({
+						where: {
+							professionalId: { in: professionals.map((p) => p._id) },
+							status: { in: ["CONFIRMED", "IN_PROGRESS"] },
+							scheduledStartTime: {
+								gte: date.startOf("day").toDate(),
+								lt: date.endOf("day").toDate(),
+							},
+						},
+						select: { scheduledStartTime: true, completedAt: true },
+					});
+
+					const availableSlots = allSlots.filter((slot) => {
+						const slotStart = dayjs(slot);
+						const slotEnd = slotStart.add(30, "minute");
+						return !bookedSlots.some((b) => {
+							const bStart = dayjs(b.scheduledStartTime);
+							const bEnd = b.completedAt
+								? dayjs(b.completedAt)
+								: bStart.add(2, "hour");
+							return slotStart.isBefore(bEnd) && slotEnd.isAfter(bStart);
+						});
+					});
+
+					// 6️⃣ For each duration, compute valid slots (enough continuous time)
+					const durationSlots = [];
+					for (const d of DURATIONS) {
+						const minMinutes = d.hours * 60;
+						const validSlots = availableSlots.filter((slot) => {
+							const slotEnd = dayjs(slot).add(minMinutes, "minute");
+							// Ensure the entire duration fits within availability
+							return availableSlots.some((s) =>
+								dayjs(s).isSame(slotEnd.subtract(30, "minute")),
+							);
+						});
+						durationSlots.push({
+							...d,
+							slots: categorizeTimeSlots(validSlots),
+						});
+					}
+
+					results.push({
+						date: date.format("YYYY-MM-DD"),
+						durations: DURATIONS,
+						slots: categorizeTimeSlots(availableSlots),
+						durationWiseSlots: durationSlots,
+					});
+				}
+				return {
+					data: results,
+				};
+			} catch (error) {
+				console.error(error);
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to get service availability",
 				});
 			}
 		}),
