@@ -21,14 +21,15 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@orpc/server": "catalog:",
+    "@house-help/auth": "workspace:*",
+    "@house-help/db": "workspace:*",
     "@orpc/client": "^1.10.0",
     "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
-    "elysia": "catalog:",
+    "dayjs": "^1.11.19",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@house-help/auth": "workspace:*",
-    "@house-help/db": "workspace:*"
+    "elysia": "catalog:",
+    "zod": "catalog:"
   }
 }

@@ -38,16 +38,17 @@ model Professional {
   approvedAt     DateTime?
 
   // Relations
-  favouritedBy         FavoriteProfessional[]
-  availability         ProfessionalAvailability[]
-  bookings             Booking[]
-  reviews              Review[]
-  earnings             Earning[]
-  professionalDocument ProfessionalDocument[]
-  services             ProfessionalService[]
-  recurringBookingRule RecurringBookingRule[]
-  payout               Payout[]
-  bookingNotifications BookingNotification[]
+  favouritedBy                       FavoriteProfessional[]
+  availability                       ProfessionalAvailability[]
+  bookings                           Booking[]
+  reviews                            Review[]
+  earnings                           Earning[]
+  professionalDocument               ProfessionalDocument[]
+  services                           ProfessionalService[]
+  recurringBookingRule               RecurringBookingRule[]
+  payout                             Payout[]
+  bookingNotifications               BookingNotification[]
+  professionalAvailabilityExceptions ProfessionalAvailabilityException[]
 
   @@index([userId])
   @@index([isAvailable, approvalStatus])
@@ -116,14 +117,36 @@ model ProfessionalAvailability {
   id             String       @id @default(cuid()) @map("_id")
   professionalId String
   professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  dayOfWeek      DayOfWeek
+  dayIndex       Int
   startTime      String // e.g., "09:00"
   endTime        String // e.g., "17:00"
-  isAvailable    Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  // Added fields:
+  breakSlots     Json? // e.g. [{ start: "13:00", end: "14:00" }]
+  isFullDayOff   Boolean      @default(false)
+  // timezone       String       @default("Asia/Kolkata")
+
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([professionalId])
-  @@index([professionalId, dayOfWeek])
+  @@index([professionalId, dayIndex])
   @@map("professional_availability")
+}
+
+model ProfessionalAvailabilityException {
+  id             String   @id @default(cuid()) @map("_id")
+  professionalId String
+  date           DateTime // e.g., 2025-11-12
+  isAvailable    Boolean  @default(true)
+  reason         String?
+  startTime      String? // optional, for partial unavailability
+  endTime        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, date])
+  @@index([date])
 }
